@@ -2,6 +2,10 @@ package edu.jsu.mcis.cs310;
 
 import com.github.cliftonlabs.json_simple.*;
 import com.opencsv.*;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.Iterator;
+import java.util.List;
 
 public class Converter {
     
@@ -77,8 +81,42 @@ public class Converter {
         String result = "{}"; // default return value; replace later!
         
         try {
-        
-            // INSERT YOUR CODE HERE
+            CSVReader reader = new CSVReader(new StringReader(csvString));
+            List<String[]> full = reader.readAll();
+
+            Iterator<String[]> iterator = full.iterator();
+
+            JsonObject json = new JsonObject();
+
+            JsonArray prodNums = new JsonArray();
+            JsonArray data = new JsonArray();
+
+            if (iterator.hasNext()) {
+                String[] headings = iterator.next();
+
+                while (iterator.hasNext()) {
+                    String[] row = iterator.next();
+
+                    JsonArray dataRow = new JsonArray();
+
+                    prodNums.add(row[0]);
+
+                    for (int i = 1; i < row.length; i++) {
+                        try {
+                            int intValue = Integer.parseInt(row[i]);
+                            dataRow.add(intValue);
+                        } catch (NumberFormatException e) {
+                            dataRow.add(row[i]);
+                        }
+                    }
+                    data.add(dataRow);
+                }
+                json.put("ProdNums", prodNums);
+                json.put("ColHeadings", headings);
+                json.put("Data", data);
+            }
+
+            result = Jsoner.serialize(json);
             
         }
         catch (Exception e) {
@@ -94,10 +132,53 @@ public class Converter {
         
         String result = ""; // default return value; replace later!
         
-        try {
+        try { 
+           JsonObject json = Jsoner.deserialize(jsonString, new JsonObject());
+           StringWriter writer = new StringWriter();
+           CSVWriter csvWriter = new CSVWriter(writer, ',', '"', '\\', "\n");
+           
+           JsonArray colHeadings = (JsonArray) json.get("ColHeadings");
+           String[] headings = colHeadings.toArray(String[]::new);
+                   
+                csvWriter.writeNext(headings);
+
+            JsonArray prodNums = (JsonArray) json.get("ProdNums");
+            JsonArray dataJson = (JsonArray) json.get("Data");
             
-            // INSERT YOUR CODE HERE
             
+            for (int i = 0; i < dataJson.size(); i++){
+                JsonArray row = (JsonArray) dataJson.get(i);
+                String[] data = new String[row.size() + 1];
+                
+                data[0] = prodNums.getString(i);
+                
+                for (int j = 0; j < row.size(); j++){
+                    String value = row.getString(j);
+                    int column = j + 1;
+                    
+                    if(column == 3){
+                        
+                        try {
+                            int intValue = Integer.parseInt(value);
+                            data[column] = String.format("%02d", intValue);
+                        }
+                         catch (NumberFormatException e){
+                             
+                        }
+                    }
+                    
+                    else {
+                        data[column] = value;
+                    }
+                }
+                
+                csvWriter.writeNext(data);  
+
+            }
+            
+             String csv = writer.toString();
+
+            result = csv;
         }
         catch (Exception e) {
             e.printStackTrace();
